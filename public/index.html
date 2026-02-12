@@ -334,8 +334,13 @@
                     <label for="privacy">Acepto la <a href="privacy.html" target="_blank">Política de Privacidad</a> y
                         los <a href="terms.html" target="_blank">Términos de Uso</a> *</label>
                 </div>
+                <!-- Honeypot anti-bot (no tocar) -->
+                <div style="display:none" aria-hidden="true">
+                    <label for="website">Website</label>
+                    <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                </div>
                 <div class="form-submit">
-                    <button type="submit" class="btn btn--primary btn--large">Enviar solicitud</button>
+                    <button type="submit" id="submitBtn" class="btn btn--primary btn--large">Enviar solicitud</button>
                 </div>
             </form>
             <div class="contact__success" id="successMessage">
@@ -373,6 +378,7 @@
         </div>
     </footer>
 
+    <script src="config.js"></script>
     <script src="script.js"></script>
 </body>
 

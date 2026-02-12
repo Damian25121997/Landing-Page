@@ -66,59 +66,131 @@ faqQuestions.forEach(question => {
 });
 
 // ============================================
+// CONTACT FORM — CONFIGURACIÓN
+// ============================================
+// WEBHOOK_URL y API_KEY se cargan desde config.js (no se sube a Git)
+const FETCH_TIMEOUT_MS = 15000; // 15 segundos
+
+// ============================================
 // CONTACT FORM VALIDATION & SUBMISSION
 // ============================================
 const contactForm = document.getElementById('contactForm');
 const successMessage = document.getElementById('successMessage');
+const submitBtn = document.getElementById('submitBtn');
+const submitBtnOriginalText = submitBtn.textContent;
 
-contactForm.addEventListener('submit', (e) => {
+/**
+ * Envía los datos al webhook de n8n con timeout.
+ * @param {Object} data — payload JSON
+ * @returns {Promise<Response>}
+ */
+async function submitToWebhook(data) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Envía con 1 reintento automático ante fallo de red.
+ * @param {Object} data — payload JSON
+ * @param {number} retries — cantidad de reintentos restantes
+ */
+async function submitWithRetry(data, retries = 1) {
+  try {
+    const response = await submitToWebhook(data);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return response;
+  } catch (error) {
+    if (retries > 0 && (error.name === 'AbortError' || error.name === 'TypeError')) {
+      // TypeError = fallo de red; AbortError = timeout
+      await new Promise(r => setTimeout(r, 2000)); // esperar 2s antes de reintentar
+      return submitWithRetry(data, retries - 1);
+    }
+    throw error;
+  }
+}
+
+contactForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  // Get form data
-  const formData = {
-    nombre: document.getElementById('nombre').value.trim(),
-    email: document.getElementById('email').value.trim(),
-    telefono: document.getElementById('telefono').value.trim(),
-    mensaje: document.getElementById('mensaje').value.trim(),
-    privacy: document.getElementById('privacy').checked,
-    timestamp: new Date().toISOString()
-  };
+  // --- Honeypot check ---
+  const honeypot = document.getElementById('website');
+  if (honeypot && honeypot.value) {
+    // Bot detected: simular éxito silencioso
+    contactForm.style.display = 'none';
+    successMessage.classList.add('show');
+    return;
+  }
 
-  // Validate required fields
-  if (!formData.nombre || !formData.email || !formData.telefono || !formData.mensaje) {
+  // --- Obtener datos ---
+  const nombre = document.getElementById('nombre').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const telefono = document.getElementById('telefono').value.trim();
+  const mensaje = document.getElementById('mensaje').value.trim();
+  const privacyChecked = document.getElementById('privacy').checked;
+
+  // --- Validaciones ---
+  if (!nombre || !email || !telefono || !mensaje) {
     alert('Por favor completá todos los campos obligatorios.');
     return;
   }
 
-  // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(formData.email)) {
+  if (!emailRegex.test(email)) {
     alert('Por favor ingresá un email válido.');
     return;
   }
 
-  // Validate privacy checkbox
-  if (!formData.privacy) {
+  if (!privacyChecked) {
     alert('Debes aceptar la Política de Privacidad y los Términos de Uso.');
     return;
   }
 
-  // Save to localStorage (simulation)
-  try {
-    const existingSubmissions = JSON.parse(localStorage.getItem('neutralops_submissions') || '[]');
-    existingSubmissions.push(formData);
-    localStorage.setItem('neutralops_submissions', JSON.stringify(existingSubmissions));
+  // --- Payload para n8n ---
+  const payload = {
+    name: nombre,
+    email: email,
+    phone: telefono,
+    message: mensaje,
+    subject: 'Solicitud de diagnóstico',
+    source_url: window.location.href,
+    user_agent: navigator.userAgent,
+    timestamp: new Date().toISOString(),
+    api_key: API_KEY
+  };
 
-    // Hide form and show success message
+  // --- Envío con loading state ---
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Enviando...';
+
+  try {
+    await submitWithRetry(payload);
+
+    // Éxito: limpiar form y mostrar mensaje
+    contactForm.reset();
     contactForm.style.display = 'none';
     successMessage.classList.add('show');
-
-    // Scroll to success message
     successMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
   } catch (error) {
-    console.error('Error saving submission:', error);
-    alert('Hubo un error al enviar el formulario. Por favor intentá nuevamente.');
+    console.error('Error al enviar formulario:', error);
+    alert('Hubo un error al enviar tu solicitud. Por favor intentá de nuevo en unos minutos.');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = submitBtnOriginalText;
   }
 });
 
