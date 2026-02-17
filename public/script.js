@@ -69,7 +69,6 @@ faqQuestions.forEach(question => {
 // CONTACT FORM — CONFIGURACIÓN
 // ============================================
 // WEBHOOK_URL y API_KEY se cargan desde config.js (no se sube a Git)
-const FETCH_TIMEOUT_MS = 15000; // 15 segundos
 
 // ============================================
 // CONTACT FORM VALIDATION & SUBMISSION
@@ -84,6 +83,29 @@ const submitBtnOriginalText = submitBtn.textContent;
  * @param {Object} data — payload JSON
  * @returns {Promise<Response>}
  */
+
+const BACKEND_ENDPOINT = "/api/lead";
+const FETCH_TIMEOUT_MS = 15000;
+
+async function submitToWebhook(data) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(BACKEND_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+
+/*
 async function submitToWebhook(data) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -99,7 +121,7 @@ async function submitToWebhook(data) {
   } finally {
     clearTimeout(timeoutId);
   }
-}
+}*/
 
 /**
  * Envía con 1 reintento automático ante fallo de red.
@@ -168,8 +190,7 @@ contactForm.addEventListener('submit', async (e) => {
     subject: 'Solicitud de diagnóstico',
     source_url: window.location.href,
     user_agent: navigator.userAgent,
-    timestamp: new Date().toISOString(),
-    api_key: API_KEY
+    timestamp: new Date().toISOString()
   };
 
   // --- Envío con loading state ---
