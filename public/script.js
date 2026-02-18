@@ -188,8 +188,8 @@ contactForm.addEventListener('submit', async (e) => {
   // --- Anti-spam: campo honeypot oculto ---
   // Si un bot llenó el campo oculto "website", se simula éxito
   // sin enviar nada al servidor (trampa invisible para bots).
-  const honeypot = document.getElementById('website');
-  if (honeypot && honeypot.value) {
+  const honeypot = document.getElementById('website')?.value?.trim() || '';
+  if (honeypot) {
     contactForm.style.display = 'none';
     successMessage.classList.add('show');
     return;
@@ -227,6 +227,7 @@ contactForm.addEventListener('submit', async (e) => {
     email: email,
     phone: telefono,
     message: mensaje,
+    honeypot,
     subject: 'Solicitud de diagnóstico',
     source_url: window.location.href,
     user_agent: navigator.userAgent,
