@@ -202,7 +202,7 @@ contactForm.addEventListener('submit', async (e) => {
   const email = document.getElementById('email').value.trim();
   const telefono = document.getElementById('telefono').value.trim();
   const mensaje = document.getElementById('mensaje').value.trim();
-  const asunto = document.getElementById('asunto').value;
+  const asunto = document.getElementById('asunto').value.trim();
   const privacyChecked = document.getElementById('privacy').checked;
 
   // --- Validación: campos obligatorios ---
