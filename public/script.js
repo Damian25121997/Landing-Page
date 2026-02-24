@@ -106,6 +106,8 @@ const submitBtn = document.getElementById('submitBtn');
 const submitBtnOriginalText = submitBtn.textContent;
 
 const BACKEND_ENDPOINT = "https://api.neutralops.cloud/api/lead";
+const WHATSAPP_ENDPOINT = "https://api.neutralops.cloud/api/whatsapp-click";
+const WHATSAPP_NUMBER = "59892332379";
 const FETCH_TIMEOUT_MS = 15000;
 
 
@@ -200,10 +202,11 @@ contactForm.addEventListener('submit', async (e) => {
   const email = document.getElementById('email').value.trim();
   const telefono = document.getElementById('telefono').value.trim();
   const mensaje = document.getElementById('mensaje').value.trim();
+  const asunto = document.getElementById('asunto').value;
   const privacyChecked = document.getElementById('privacy').checked;
 
   // --- Validación: campos obligatorios ---
-  if (!nombre || !email || !telefono || !mensaje) {
+  if (!nombre || !email || !telefono || !mensaje || !asunto) {
     alert('Por favor completá todos los campos obligatorios.');
     return;
   }
@@ -228,7 +231,7 @@ contactForm.addEventListener('submit', async (e) => {
     phone: telefono,
     message: mensaje,
     honeypot,
-    subject: 'Solicitud de diagnóstico',
+    subject: asunto,
     source_url: window.location.href,
     user_agent: navigator.userAgent,
     timestamp: new Date().toISOString()
@@ -368,3 +371,36 @@ window.addEventListener('load', () => {
     }, 100);
   }
 });
+
+
+// ============================================
+// 9. BOTÓN FLOTANTE DE WHATSAPP (TRACKING)
+// ============================================
+// Al hacer clic en el botón flotante de WhatsApp:
+//   1. Envía un POST fire-and-forget al backend para tracking.
+//   2. Abre WhatsApp con un mensaje pre-llenado.
+// El tracking funciona incluso sin workflow n8n configurado.
+
+const whatsappBtn = document.getElementById('whatsappBtn');
+if (whatsappBtn) {
+  whatsappBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+
+    // Fire-and-forget: registrar clic en backend
+    try {
+      fetch(WHATSAPP_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_url: window.location.href,
+          user_agent: navigator.userAgent,
+          timestamp: new Date().toISOString()
+        })
+      }).catch(() => { }); // No bloquear si falla
+    } catch (_) { }
+
+    // Abrir WhatsApp con mensaje pre-llenado
+    const mensaje = encodeURIComponent('Hola NeutralOps, quiero consultar sobre sus servicios de automatización.');
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${mensaje}`, '_blank', 'noopener,noreferrer');
+  });
+}
