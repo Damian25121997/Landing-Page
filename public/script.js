@@ -234,7 +234,9 @@ contactForm.addEventListener('submit', async (e) => {
     subject: asunto,
     source_url: window.location.href,
     user_agent: navigator.userAgent,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toLocaleString('es-UY', {
+      timeZone: 'America/Montevideo'
+    })
   };
 
   // --- Estado de carga: deshabilitar botón mientras se envía ---
